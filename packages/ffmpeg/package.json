@@ -1,0 +1,13 @@
+{
+  "name": "@yanying/ffmpeg",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/runtime.ts"
+  },
+  "dependencies": {
+    "@yanying/file": "workspace:*",
+    "@renmu/fluent-ffmpeg": "2.3.3"
+  }
+}

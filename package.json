@@ -1,0 +1,30 @@
+{
+  "name": "yanying",
+  "version": "0.1.0",
+  "description": "言映：宿主模型写故事，本地免费制作视频",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "workspaces": ["packages/*"],
+  "scripts": {
+    "start": "bun src/cli.ts",
+    "mcp": "bun src/mcp.ts",
+    "setup": "bun scripts/setup.ts",
+    "demo": "bun scripts/demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@yanying/file": "workspace:*",
+    "@yanying/ffmpeg": "workspace:*",
+    "@modelcontextprotocol/sdk": "1.25.1",
+    "ffmpeg-static": "5.2.0",
+    "sharp": "0.34.5",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.2",
+    "@types/node": "^26.6.5",
+    "typescript": "5.9.3"
+  },
+  "trustedDependencies": ["ffmpeg-static", "sharp"]
+}
