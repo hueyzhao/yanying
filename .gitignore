@@ -5,3 +5,5 @@ local/
 *.log
 .DS_Store
 .env*
+.workbuddy/
+.trae/
