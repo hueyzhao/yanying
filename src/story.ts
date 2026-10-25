@@ -9,14 +9,25 @@ export const storySchema = z.object({
     visual: z.string().min(4).max(600),
     characterIds: z.array(z.string()).max(8),
     caption: z.string().trim().min(1).max(48).refine(value => !/[\x00-\x1f\x7f]/.test(value), "字幕不能含控制字符"),
+    narration: z.string().trim().min(1).max(160).optional(),
     asset: z.string().min(1).max(500),
   }).strict()).min(1).max(24),
   audio: z.string().min(1).max(500).optional(),
+  voiceover: z.object({
+    voice: z.string().trim().min(1).max(100).optional(),
+    rate: z.number().int().min(100).max(300).default(190),
+    volume: z.number().min(0.1).max(2).default(1),
+  }).strict().optional(),
+  music: z.union([
+    z.object({ preset: z.enum(["gentle", "bright", "calm"]), volume: z.number().min(0.01).max(1).default(0.18) }).strict(),
+    z.object({ asset: z.string().min(1).max(500), volume: z.number().min(0.01).max(1).default(0.18) }).strict(),
+  ]).optional(),
 }).strict();
 export type Story = z.infer<typeof storySchema>;
 
 export function validateStory(input: unknown) {
   const story = storySchema.parse(input);
+  if (story.audio && story.voiceover) throw new Error("audio 和 voiceover 只能选一个；背景音乐请单独使用 music");
   const ids = new Set(story.characters.map(item => item.id));
   if (ids.size !== story.characters.length) throw new Error("角色 ID 不能重复");
   const total = story.shots.reduce((sum, shot) => sum + shot.duration, 0);

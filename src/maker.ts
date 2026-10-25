@@ -4,6 +4,7 @@ import ffmpegPath from "ffmpeg-static";
 import { extname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 import { validateStory } from "./story";
+import { prepareAudio, requireVoice, voiceStatus } from "./audio";
 
 export const workspace = resolve(process.env.YANYING_WORKSPACE || "workspace");
 
@@ -29,7 +30,7 @@ export async function doctor() {
   const output = await new Response(child.stdout).text();
   const code = await child.exited;
   if (code !== 0) throw new Error("FFmpeg 不可运行，请重新执行安装");
-  return { product: "言映", version: "0.1.0", workspace, ffmpeg: output.split("\n")[0], paidApiCalls: 0 };
+  return { product: "言映", version: "0.2.0", workspace, ffmpeg: output.split("\n")[0], voiceover: await voiceStatus(), musicPresets: ["gentle", "bright", "calm"], paidApiCalls: 0 };
 }
 
 export async function loadStory(path: string) {
@@ -43,6 +44,8 @@ export async function validateProject(path: string) {
     if (!/\.(png|jpe?g|webp|mp4|mov|webm)$/i.test(asset)) throw new Error("素材只支持 PNG/JPG/WebP/MP4/MOV/WebM");
   }
   if (story.audio && !/\.(wav|mp3|m4a)$/i.test(await localPath(story.audio))) throw new Error("配音只支持 WAV/MP3/M4A");
+  if (story.music && "asset" in story.music && !/\.(wav|mp3|m4a)$/i.test(await localPath(story.music.asset))) throw new Error("背景音乐只支持 WAV/MP3/M4A");
+  if (story.voiceover) await requireVoice(story.voiceover.voice);
   return { valid: true, title: story.title, duration: story.duration, shots: story.shots.length, warnings };
 }
 
@@ -66,7 +69,8 @@ export async function renderProject(path: string) {
     job = join(workspace, "output", randomUUID());
     await mkdir(job, { recursive: true });
     const statusPath = join(job, "status.json");
-    await writeAtomic(statusPath, JSON.stringify({ status: "rendering", title: story.title }));
+    await writeAtomic(statusPath, JSON.stringify({ status: "rendering", phase: "audio", title: story.title }));
+    const audio = await prepareAudio(story, job, binary(), localPath);
     const ffmpeg = createFfmpeg(job);
     ffmpeg.setFfmpegPath(binary());
     const fontCandidates = [process.env.YANYING_FONT, "/System/Library/Fonts/PingFang.ttc", "/System/Library/Fonts/STHeiti Medium.ttc", "/System/Library/Fonts/Supplemental/Songti.ttc", "C:/Windows/Fonts/msyh.ttc", "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc"].filter(Boolean) as string[];
@@ -101,16 +105,13 @@ export async function renderProject(path: string) {
     }
     await writeFile(join(job, "concat.txt"), story.shots.map((_, index) => `file 'shot${index}.mp4'`).join("\n"), { flag: "wx" });
     const final = ffmpeg("concat.txt", { timeout: 180 }).inputOptions(["-f concat", "-safe 1"]);
-    if (story.audio) {
-      const audioPath = await localPath(story.audio);
-      const name = "audio" + extname(audioPath).toLowerCase();
-      await copyFile(audioPath, join(job, name));
-      final.input(name).outputOptions(["-map 0:v:0", "-map 1:a:0", "-af apad"]).audioCodec("aac");
+    if (audio.file) {
+      final.input("mixed.wav").outputOptions(["-map 0:v:0", "-map 1:a:0"]).audioCodec("aac");
     }
     await run(final.videoCodec("copy").duration(story.duration).outputOptions(["-movflags +faststart"]).output("video.mp4"));
     await writeFile(join(job, "subtitles.srt"), subtitles.join("\n"), { flag: "wx" });
     await writeAtomic(join(job, "story.json"), JSON.stringify(story, null, 2));
-    const result = { status: "completed", video: join(job, "video.mp4"), subtitles: join(job, "subtitles.srt"), duration: story.duration, warnings, paidApiCalls: 0 };
+    const result = { status: "completed", video: join(job, "video.mp4"), subtitles: join(job, "subtitles.srt"), duration: story.duration, audio: audio.details, warnings, paidApiCalls: 0 };
     await writeAtomic(statusPath, JSON.stringify(result, null, 2));
     return result;
   } catch (error) {

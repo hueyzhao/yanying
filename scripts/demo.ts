@@ -12,7 +12,9 @@ for (let index = 0; index < 4; index++) {
   await sharp(Buffer.from(body)).png().toFile(join(directory, `scene${index}.png`));
 }
 const description = "背着金色圆壳的小蜗牛";
-const story = { title: "把月光送回家", duration: 20, characters: [{ id: "snail", description }], shots: [
+const story = { title: "把月光送回家", duration: 20,
+  ...(process.argv.includes("--audio") ? { voiceover: {}, music: { preset: "gentle" } } : {}),
+  characters: [{ id: "snail", description }], shots: [
   { duration: 5, visual: `${description}在夜晚迷了路，萤火虫飞来陪伴。`, characterIds: ["snail"], caption: "天黑了，小蜗牛找不到回家的路。", asset: "demo/scene0.png" },
   { duration: 5, visual: `${description}跟着萤火虫来到小溪，发现树叶桥。`, characterIds: ["snail"], caption: "一只萤火虫说：跟着我的光走吧。", asset: "demo/scene1.png" },
   { duration: 5, visual: `${description}慢慢走过树叶桥，萤火虫照亮前方。`, characterIds: ["snail"], caption: "它们跨过小溪，终于看见了小屋。", asset: "demo/scene2.png" },
